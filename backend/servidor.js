@@ -6,6 +6,7 @@ require("dotenv").config();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { requiereLogin, requiereRol } = require("./auth");
+const { registrarAuditoria } = require("./auditoria");
 
 app.use(cors());
 app.use(express.json());
@@ -35,6 +36,7 @@ app.post("/login", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "8h" }
     );
+    await registrarAuditoria(usuario.Id, "login", `${usuario.Nombre} inició sesión`);
 
     res.json({ token, nombre: usuario.Nombre, rol: usuario.Rol });
   } catch (err) {
@@ -106,7 +108,11 @@ app.post(
           ordenGenerada = insertResult.recordset[0];
         }
       }
-
+await registrarAuditoria(
+  req.usuario.id,
+  "venta",
+  `${req.usuario.nombre} vendió unidades de ${producto.Nombre} (stock resultante: ${nuevoStock})`
+);
       res.json({ stock: nuevoStock, ordenGenerada });
     } catch (err) {
       console.error(err);
@@ -130,6 +136,40 @@ app.get("/ordenes", async (req, res) => {
     res.status(500).json({ error: "Error al consultar órdenes" });
   }
 });
+
+app.get("/usuarios", requiereLogin, async (req, res) => {
+  try {
+    const pool = await getConnection();
+    const resultado = await pool
+      .request()
+      .query("SELECT Id, Nombre, Correo, Rol, Departamento FROM Usuarios");
+    res.json(resultado.recordset);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al consultar usuarios" });
+  }
+});
+
+app.get(
+  "/auditoria",
+  requiereLogin,
+  requiereRol("administrador", "gerencia"),
+  async (req, res) => {
+    try {
+      const pool = await getConnection();
+      const resultado = await pool.request().query(`
+        SELECT a.Id, a.Accion, a.Detalle, a.CreadoEn, u.Nombre AS Usuario
+        FROM Auditoria a
+        JOIN Usuarios u ON u.Id = a.UsuarioId
+        ORDER BY a.Id DESC
+      `);
+      res.json(resultado.recordset);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error al consultar auditoría" });
+    }
+  }
+);
 
 app.listen(3000, () => {
   console.log("Servidor corriendo en http://localhost:3000");

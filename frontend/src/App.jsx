@@ -1,38 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { Routes, Route, NavLink } from "react-router-dom";
 import Login from "./Login";
+import Ventas from "./pages/Ventas";
+import Auditoria from "./pages/Auditoria";
+import RRHH from "./pages/RRHH";
+import Finanzas from "./pages/Finanzas";
+import Mercadeo from "./pages/Mercadeo";
+
+const modulos = [
+  { path: "/ventas", nombre: "Ventas" },
+  { path: "/finanzas", nombre: "Finanzas" },
+  { path: "/mercadeo", nombre: "Mercadeo" },
+  { path: "/rrhh", nombre: "Recursos Humanos" },
+  { path: "/auditoria", nombre: "Auditoría" },
+];
 
 function App() {
   const [usuario, setUsuario] = useState(null);
-  const [productos, setProductos] = useState([]);
-  const [ordenes, setOrdenes] = useState([]);
-
-  function cargarProductos() {
-    fetch("http://localhost:3000/productos")
-      .then((res) => res.json())
-      .then((data) => setProductos(data));
-  }
-
-  function cargarOrdenes() {
-    fetch("http://localhost:3000/ordenes")
-      .then((res) => res.json())
-      .then((data) => setOrdenes(data));
-  }
-
-  useEffect(() => {
-    if (usuario) {
-      cargarProductos();
-      cargarOrdenes();
-    }
-  }, [usuario]);
-
-  async function venderProducto(id) {
-    await fetch(`http://localhost:3000/productos/${id}/vender`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${usuario.token}` },
-    });
-    cargarProductos();
-    cargarOrdenes();
-  }
 
   function cerrarSesion() {
     setUsuario(null);
@@ -43,37 +27,46 @@ function App() {
   }
 
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <h1>Inventario</h1>
-        <div>
-          <span>
-            {usuario.nombre} ({usuario.rol})
-          </span>{" "}
-          <button onClick={cerrarSesion}>Cerrar sesión</button>
-        </div>
-      </div>
+    <div style={{ display: "flex", minHeight: "100vh" }}>
+      <nav
+        style={{
+          width: "220px",
+          borderRight: "1px solid #ccc",
+          padding: "20px",
+        }}
+      >
+        <h3>Soluciones Informáticas</h3>
+        <p style={{ fontSize: "14px", color: "#666" }}>
+          {usuario.nombre} ({usuario.rol})
+        </p>
+        <ul style={{ listStyle: "none", padding: 0 }}>
+          {modulos.map((m) => (
+            <li key={m.path} style={{ marginBottom: "8px" }}>
+              <NavLink
+                to={m.path}
+                style={({ isActive }) => ({
+                  fontWeight: isActive ? "bold" : "normal",
+                  textDecoration: "none",
+                })}
+              >
+                {m.nombre}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+        <button onClick={cerrarSesion}>Cerrar sesión</button>
+      </nav>
 
-      <ul>
-        {productos.map((p) => (
-          <li key={p.Id}>
-            {p.Nombre} — stock: {p.Stock}
-            <button onClick={() => venderProducto(p.Id)}>
-              Registrar venta
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      <h2>Órdenes de compra generadas</h2>
-      {ordenes.length === 0 && <p>Todavía no hay órdenes generadas.</p>}
-      <ul>
-        {ordenes.map((o) => (
-          <li key={o.Id}>
-            {o.Producto} — {o.Cantidad} unidades — estado: {o.Estado}
-          </li>
-        ))}
-      </ul>
+      <main style={{ flex: 1, padding: "20px" }}>
+        <Routes>
+          <Route path="/ventas" element={<Ventas usuario={usuario} />} />
+          <Route path="/finanzas" element={<Finanzas />} />
+          <Route path="/mercadeo" element={<Mercadeo />} />
+          <Route path="/rrhh" element={<RRHH usuario={usuario} />} />
+          <Route path="/auditoria" element={<Auditoria usuario={usuario} />} />
+          <Route path="*" element={<Ventas usuario={usuario} />} />
+        </Routes>
+      </main>
     </div>
   );
 }
