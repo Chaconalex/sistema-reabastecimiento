@@ -107,6 +107,15 @@ app.post(
             );
           ordenGenerada = insertResult.recordset[0];
         }
+        await pool
+          .request()
+          .input("productoId", sql.Int, id)
+          .input("usuarioId", sql.Int, req.usuario.id)
+          .input("cantidad", sql.Int, 3)
+          .query(
+            `INSERT INTO VentasRegistro (ProductoId, UsuarioId, Cantidad)
+            VALUES (@productoId, @usuarioId, @cantidad)`
+          );
       }
 await registrarAuditoria(
   req.usuario.id,
@@ -395,6 +404,42 @@ app.post(
     }
   }
 );
+
+app.get("/ventas/historial", requiereLogin, async (req, res) => {
+  try {
+    const pool = await getConnection();
+    const resultado = await pool.request().query(`
+      SELECT TOP 20 v.Id, v.Cantidad, v.CreadoEn, p.Nombre AS Producto, u.Nombre AS Vendedor
+      FROM VentasRegistro v
+      JOIN Productos p ON p.Id = v.ProductoId
+      JOIN Usuarios u ON u.Id = v.UsuarioId
+      ORDER BY v.Id DESC
+    `);
+    res.json(resultado.recordset);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al consultar el historial" });
+  }
+});
+
+app.get("/ventas/resumen", requiereLogin, async (req, res) => {
+  try {
+    const pool = await getConnection();
+    const resultado = await pool.request().query(`
+      SELECT p.Nombre AS Producto, SUM(v.Cantidad) AS UnidadesVendidas
+      FROM VentasRegistro v
+      JOIN Productos p ON p.Id = v.ProductoId
+      GROUP BY p.Nombre
+      ORDER BY UnidadesVendidas DESC
+    `);
+    res.json(resultado.recordset);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al consultar el resumen de ventas" });
+  }
+});
+
+
 
 app.listen(3000, () => {
   console.log("Servidor corriendo en http://localhost:3000");
