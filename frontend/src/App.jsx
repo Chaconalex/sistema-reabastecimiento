@@ -61,7 +61,7 @@ function App() {
         <Routes>
           <Route path="/ventas" element={<Ventas usuario={usuario} />} />
           <Route path="/finanzas" element={<Finanzas usuario={usuario} />} />
-          <Route path="/mercadeo" element={<Mercadeo />} />
+          <Route path="/mercadeo" element={<Mercadeo usuario={usuario} />} />
           <Route path="/rrhh" element={<RRHH usuario={usuario} />} />
           <Route path="/auditoria" element={<Auditoria usuario={usuario} />} />
           <Route path="*" element={<Ventas usuario={usuario} />} />

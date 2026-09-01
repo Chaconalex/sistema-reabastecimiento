@@ -206,6 +206,41 @@ app.get(
   }
 );
 
+app.post(
+  "/productos/:id/promocion",
+  requiereLogin,
+  requiereRol("administrador", "gerencia"),
+  async (req, res) => {
+    const id = Number(req.params.id);
+    const { activar, porcentaje } = req.body;
+
+    try {
+      const pool = await getConnection();
+      await pool
+        .request()
+        .input("id", sql.Int, id)
+        .input("activar", sql.Bit, activar)
+        .input("porcentaje", sql.Int, activar ? porcentaje : null)
+        .query(
+          `UPDATE Productos
+           SET EnPromocion = @activar, PorcentajeDescuento = @porcentaje
+           WHERE Id = @id`
+        );
+
+      await registrarAuditoria(
+        req.usuario.id,
+        "promocion",
+        `${req.usuario.nombre} ${activar ? "activó" : "desactivó"} promoción en producto ${id}`
+      );
+
+      res.json({ ok: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error al actualizar promoción" });
+    }
+  }
+);
+
 app.listen(3000, () => {
   console.log("Servidor corriendo en http://localhost:3000");
 });
