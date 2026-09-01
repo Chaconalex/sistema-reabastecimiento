@@ -203,10 +203,19 @@ app.get(
         GROUP BY p.Nombre
         ORDER BY Gasto DESC
       `);
+      const porMes = await pool.request().query(`
+    SELECT FORMAT(o.CreadoEn, 'yyyy-MM') AS Mes,
+          SUM(o.Cantidad * p.PrecioUnitario) AS Gasto
+    FROM Ordenes o
+    JOIN Productos p ON p.Id = o.ProductoId
+    GROUP BY FORMAT(o.CreadoEn, 'yyyy-MM')
+    ORDER BY Mes
+`);
 
       res.json({
         gastoTotal: total.recordset[0].GastoTotal || 0,
         porProducto: porProducto.recordset,
+             porMes: porMes.recordset,
       });
     } catch (err) {
       console.error(err);

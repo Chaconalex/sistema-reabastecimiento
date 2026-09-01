@@ -1,4 +1,18 @@
 import { useState, useEffect } from "react";
+import {
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+
+const COLORES = ["#1e3a5f", "#2d5a8c", "#5b8bb8", "#8fb3d3", "#c2d9ec"];
 
 function Finanzas({ usuario }) {
   const [resumen, setResumen] = useState(null);
@@ -18,10 +32,10 @@ function Finanzas({ usuario }) {
       .then((data) => setResumen(data));
   }, [usuario]);
 
-  if (error) return <p style={{ color: "red" }}>{error}</p>;
+  if (error) return <p style={{ color: "var(--rojo-alerta)" }}>{error}</p>;
   if (!resumen) return <p>Cargando...</p>;
 
-    return (
+  return (
     <div>
       <h1>Finanzas — Gasto en reabastecimiento</h1>
 
@@ -30,7 +44,50 @@ function Finanzas({ usuario }) {
         <p className="stat-label">Gasto total generado por órdenes de compra</p>
       </div>
 
-      <h2>Gasto por producto</h2>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Gasto por mes</h3>
+          {resumen.porMes.length === 0 ? (
+            <p>Sin datos suficientes todavía.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={resumen.porMes}>
+                <XAxis dataKey="Mes" fontSize={12} />
+                <YAxis fontSize={12} />
+                <Tooltip />
+                <Line type="monotone" dataKey="Gasto" stroke="#1e3a5f" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Gasto por producto</h3>
+          {resumen.porProducto.length === 0 ? (
+            <p>Sin datos suficientes todavía.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={resumen.porProducto}
+                  dataKey="Gasto"
+                  nameKey="Producto"
+                  outerRadius={80}
+                  label
+                >
+                  {resumen.porProducto.map((_, i) => (
+                    <Cell key={i} fill={COLORES[i % COLORES.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      <h2>Detalle por producto</h2>
       <div className="card">
         <table>
           <thead>
