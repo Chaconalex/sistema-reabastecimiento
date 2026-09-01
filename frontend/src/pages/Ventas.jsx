@@ -30,6 +30,15 @@ function Ventas({ usuario }) {
     cargarOrdenes();
   }
 
+  async function recibirOrden(id) {
+  await fetch(`http://localhost:3000/ordenes/${id}/recibir`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${usuario.token}` },
+  });
+  cargarProductos();
+  cargarOrdenes();
+}
+
     return (
     <div>
       <h1>Ventas e inventario</h1>
@@ -72,25 +81,35 @@ function Ventas({ usuario }) {
         {ordenes.length === 0 && <p>Todavía no hay órdenes generadas.</p>}
         {ordenes.length > 0 && (
           <table>
-            <thead>
-              <tr>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ordenes.map((o) => (
-                <tr key={o.Id}>
-                  <td>{o.Producto}</td>
-                  <td>{o.Cantidad} unidades</td>
-                  <td>
-                    <span className="badge badge-verde">{o.Estado}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+  <thead>
+    <tr>
+      <th>Producto</th>
+      <th>Cantidad</th>
+      <th>Estado</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {ordenes.map((o) => (
+      <tr key={o.Id}>
+        <td>{o.Producto}</td>
+        <td>{o.Cantidad} unidades</td>
+        <td>
+          <span className={`badge ${o.Estado === "recibida" ? "badge-verde" : "badge-rojo"}`}>
+            {o.Estado}
+          </span>
+        </td>
+        <td>
+          {o.Estado !== "recibida" && (
+            <button className="btn" onClick={() => recibirOrden(o.Id)}>
+              Marcar como recibida
+            </button>
+          )}
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
         )}
       </div>
     </div>

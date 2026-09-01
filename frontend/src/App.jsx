@@ -6,15 +6,15 @@ import Auditoria from "./pages/Auditoria";
 import RRHH from "./pages/RRHH";
 import Finanzas from "./pages/Finanzas";
 import Mercadeo from "./pages/Mercadeo";
+import { ShoppingCart, DollarSign, Megaphone, Users, ClipboardList, LogOut } from "lucide-react";
 
 const modulos = [
-  { path: "/ventas", nombre: "Ventas" },
-  { path: "/finanzas", nombre: "Finanzas" },
-  { path: "/mercadeo", nombre: "Mercadeo" },
-  { path: "/rrhh", nombre: "Recursos Humanos" },
-  { path: "/auditoria", nombre: "Auditoría" },
+  { path: "/ventas", nombre: "Ventas", icono: ShoppingCart },
+  { path: "/finanzas", nombre: "Finanzas", icono: DollarSign },
+  { path: "/mercadeo", nombre: "Mercadeo", icono: Megaphone },
+  { path: "/rrhh", nombre: "Recursos Humanos", icono: Users },
+  { path: "/auditoria", nombre: "Auditoría", icono: ClipboardList },
 ];
-
 function App() {
   const [usuario, setUsuario] = useState(null);
 
@@ -34,20 +34,25 @@ function App() {
           {usuario.nombre} · {usuario.rol}
         </p>
         <ul>
-          {modulos.map((m) => (
-            <li key={m.path}>
-              <NavLink
-                to={m.path}
-                className={({ isActive }) => (isActive ? "activo" : "")}
-              >
-                {m.nombre}
-              </NavLink>
-            </li>
-          ))}
+          {modulos.map((m) => {
+            const Icono = m.icono;
+            return (
+              <li key={m.path}>
+                <NavLink
+                  to={m.path}
+                  className={({ isActive }) => (isActive ? "activo" : "")}
+                  style={{ display: "flex", alignItems: "center", gap: "10px" }}
+                >
+                  <Icono size={18} />
+                  {m.nombre}
+                </NavLink>
+              </li>
+            );
+          })}
         </ul>
-        <button className="btn btn-secundario" onClick={cerrarSesion}>
-          Cerrar sesión
-        </button>
+        <button className="btn btn-secundario" onClick={cerrarSesion} style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "center" }}>
+  <LogOut size={16} /> Cerrar sesión
+</button>
       </nav>
 
       <main className="main-content">

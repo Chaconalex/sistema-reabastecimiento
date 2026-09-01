@@ -241,6 +241,57 @@ app.post(
   }
 );
 
+
+app.post(
+  "/ordenes/:id/recibir",
+  requiereLogin,
+  requiereRol("compras", "administrador"),
+  async (req, res) => {
+    const id = Number(req.params.id);
+
+    try {
+      const pool = await getConnection();
+
+      const ordenResult = await pool
+        .request()
+        .input("id", sql.Int, id)
+        .query("SELECT * FROM Ordenes WHERE Id = @id");
+
+      const orden = ordenResult.recordset[0];
+      if (!orden) {
+        return res.status(404).json({ error: "Orden no encontrada" });
+      }
+      if (orden.Estado === "recibida") {
+        return res.status(400).json({ error: "Esta orden ya fue recibida" });
+      }
+
+      await pool
+        .request()
+        .input("id", sql.Int, id)
+        .query("UPDATE Ordenes SET Estado = 'recibida' WHERE Id = @id");
+
+      await pool
+        .request()
+        .input("productoId", sql.Int, orden.ProductoId)
+        .input("cantidad", sql.Int, orden.Cantidad)
+        .query(
+          "UPDATE Productos SET Stock = Stock + @cantidad WHERE Id = @productoId"
+        );
+
+      await registrarAuditoria(
+        req.usuario.id,
+        "recepcion",
+        `${req.usuario.nombre} marcó como recibida la orden #${id} (+${orden.Cantidad} unidades)`
+      );
+
+      res.json({ ok: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error al recibir la orden" });
+    }
+  }
+);
+
 app.listen(3000, () => {
   console.log("Servidor corriendo en http://localhost:3000");
 });
