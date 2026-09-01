@@ -335,12 +335,21 @@ app.get("/dashboard/resumen", requiereLogin, async (req, res) => {
       .request()
       .query("SELECT COUNT(*) AS Total FROM Productos WHERE EnPromocion = 1");
 
+
+  const actividadReciente = await pool.request().query(`
+  SELECT TOP 5 a.Accion, a.Detalle, a.CreadoEn, u.Nombre AS Usuario
+  FROM Auditoria a
+  JOIN Usuarios u ON u.Id = a.UsuarioId
+  ORDER BY a.Id DESC
+`);
+
     res.json({
       productosBajoStock: productos.recordset[0].Total,
       ordenesPendientes: ordenesPendientes.recordset[0].Total,
       gastoTotal: gasto.recordset[0].GastoTotal || 0,
       totalEmpleados: empleados.recordset[0].Total,
       promocionesActivas: promociones.recordset[0].Total,
+      actividadReciente: actividadReciente.recordset,
     });
   } catch (err) {
     console.error(err);
