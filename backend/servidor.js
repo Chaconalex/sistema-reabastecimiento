@@ -292,6 +292,44 @@ app.post(
   }
 );
 
+
+app.get("/dashboard/resumen", requiereLogin, async (req, res) => {
+  try {
+    const pool = await getConnection();
+
+    const productos = await pool
+      .request()
+      .query("SELECT COUNT(*) AS Total FROM Productos WHERE Stock <= PuntoReorden");
+
+    const ordenesPendientes = await pool
+      .request()
+      .query("SELECT COUNT(*) AS Total FROM Ordenes WHERE Estado != 'recibida'");
+
+    const gasto = await pool.request().query(`
+      SELECT SUM(o.Cantidad * p.PrecioUnitario) AS GastoTotal
+      FROM Ordenes o
+      JOIN Productos p ON p.Id = o.ProductoId
+    `);
+
+    const empleados = await pool.request().query("SELECT COUNT(*) AS Total FROM Usuarios");
+
+    const promociones = await pool
+      .request()
+      .query("SELECT COUNT(*) AS Total FROM Productos WHERE EnPromocion = 1");
+
+    res.json({
+      productosBajoStock: productos.recordset[0].Total,
+      ordenesPendientes: ordenesPendientes.recordset[0].Total,
+      gastoTotal: gasto.recordset[0].GastoTotal || 0,
+      totalEmpleados: empleados.recordset[0].Total,
+      promocionesActivas: promociones.recordset[0].Total,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al consultar el dashboard" });
+  }
+});
+
 app.listen(3000, () => {
   console.log("Servidor corriendo en http://localhost:3000");
 });
