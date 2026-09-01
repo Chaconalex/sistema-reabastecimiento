@@ -21,31 +21,36 @@ function Finanzas({ usuario }) {
   if (error) return <p style={{ color: "red" }}>{error}</p>;
   if (!resumen) return <p>Cargando...</p>;
 
-  return (
+    return (
     <div>
       <h1>Finanzas — Gasto en reabastecimiento</h1>
-      <h2>Q {resumen.gastoTotal.toFixed(2)}</h2>
-      <p>Gasto total generado por órdenes de compra</p>
 
-      <h3>Gasto por producto</h3>
-      <table border="1" cellPadding="8" style={{ borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            <th>Producto</th>
-            <th>Unidades ordenadas</th>
-            <th>Gasto</th>
-          </tr>
-        </thead>
-        <tbody>
-          {resumen.porProducto.map((p) => (
-            <tr key={p.Producto}>
-              <td>{p.Producto}</td>
-              <td>{p.UnidadesOrdenadas}</td>
-              <td>Q {p.Gasto.toFixed(2)}</td>
+      <div className="card">
+        <p className="stat-numero">Q {resumen.gastoTotal.toFixed(2)}</p>
+        <p className="stat-label">Gasto total generado por órdenes de compra</p>
+      </div>
+
+      <h2>Gasto por producto</h2>
+      <div className="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Unidades ordenadas</th>
+              <th>Gasto</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {resumen.porProducto.map((p) => (
+              <tr key={p.Producto}>
+                <td>{p.Producto}</td>
+                <td>{p.UnidadesOrdenadas}</td>
+                <td>Q {p.Gasto.toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

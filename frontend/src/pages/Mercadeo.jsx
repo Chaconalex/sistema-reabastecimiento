@@ -15,7 +15,9 @@ function Mercadeo({ usuario }) {
 
   async function togglePromocion(p) {
     const activar = !p.EnPromocion;
-    const porcentaje = activar ? Number(prompt("¿Qué porcentaje de descuento? (ej. 15)", "15")) : null;
+    const porcentaje = activar
+      ? Number(prompt("¿Qué porcentaje de descuento? (ej. 15)", "15"))
+      : null;
 
     if (activar && (!porcentaje || porcentaje <= 0)) return;
 
@@ -33,32 +35,40 @@ function Mercadeo({ usuario }) {
   return (
     <div>
       <h1>Mercadeo — Promociones</h1>
-      <table border="1" cellPadding="8" style={{ borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            <th>Producto</th>
-            <th>Precio</th>
-            <th>Promoción</th>
-            <th>Acción</th>
-          </tr>
-        </thead>
-        <tbody>
-          {productos.map((p) => (
-            <tr key={p.Id}>
-              <td>{p.Nombre}</td>
-              <td>Q {p.PrecioUnitario}</td>
-              <td>
-                {p.EnPromocion ? `${p.PorcentajeDescuento}% de descuento` : "—"}
-              </td>
-              <td>
-                <button onClick={() => togglePromocion(p)}>
-                  {p.EnPromocion ? "Quitar promoción" : "Activar promoción"}
-                </button>
-              </td>
+      <div className="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Precio</th>
+              <th>Promoción</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {productos.map((p) => (
+              <tr key={p.Id}>
+                <td>{p.Nombre}</td>
+                <td>Q {p.PrecioUnitario}</td>
+                <td>
+                  {p.EnPromocion ? (
+                    <span className="badge badge-verde">
+                      {p.PorcentajeDescuento}% de descuento
+                    </span>
+                  ) : (
+                    <span style={{ color: "var(--texto-secundario)" }}>—</span>
+                  )}
+                </td>
+                <td>
+                  <button className="btn" onClick={() => togglePromocion(p)}>
+                    {p.EnPromocion ? "Quitar promoción" : "Activar promoción"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

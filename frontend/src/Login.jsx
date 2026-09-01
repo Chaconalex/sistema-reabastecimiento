@@ -28,13 +28,12 @@ function Login({ onLogin }) {
     }
   }
 
-  return (
-    <div style={{ maxWidth: "300px", margin: "80px auto" }}>
+    return (
+    <div className="login-container">
       <h2>Iniciar sesión</h2>
       <form onSubmit={handleSubmit}>
         <div>
           <label>Correo</label>
-          <br />
           <input
             type="email"
             value={correo}
@@ -42,9 +41,8 @@ function Login({ onLogin }) {
             required
           />
         </div>
-        <div style={{ marginTop: "10px" }}>
+        <div style={{ marginTop: "12px" }}>
           <label>Contraseña</label>
-          <br />
           <input
             type="password"
             value={contrasena}
@@ -52,8 +50,8 @@ function Login({ onLogin }) {
             required
           />
         </div>
-        {error && <p style={{ color: "red" }}>{error}</p>}
-        <button type="submit" style={{ marginTop: "10px" }}>
+        {error && <p style={{ color: "var(--rojo-alerta)", fontSize: "14px" }}>{error}</p>}
+        <button className="btn" type="submit" style={{ marginTop: "16px", width: "100%" }}>
           Entrar
         </button>
       </form>

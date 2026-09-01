@@ -27,37 +27,30 @@ function App() {
   }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <nav
-        style={{
-          width: "220px",
-          borderRight: "1px solid #ccc",
-          padding: "20px",
-        }}
-      >
+    <div className="layout">
+      <nav className="sidebar">
         <h3>Soluciones Informáticas</h3>
-        <p style={{ fontSize: "14px", color: "#666" }}>
-          {usuario.nombre} ({usuario.rol})
+        <p className="usuario-info">
+          {usuario.nombre} · {usuario.rol}
         </p>
-        <ul style={{ listStyle: "none", padding: 0 }}>
+        <ul>
           {modulos.map((m) => (
-            <li key={m.path} style={{ marginBottom: "8px" }}>
+            <li key={m.path}>
               <NavLink
                 to={m.path}
-                style={({ isActive }) => ({
-                  fontWeight: isActive ? "bold" : "normal",
-                  textDecoration: "none",
-                })}
+                className={({ isActive }) => (isActive ? "activo" : "")}
               >
                 {m.nombre}
               </NavLink>
             </li>
           ))}
         </ul>
-        <button onClick={cerrarSesion}>Cerrar sesión</button>
+        <button className="btn btn-secundario" onClick={cerrarSesion}>
+          Cerrar sesión
+        </button>
       </nav>
 
-      <main style={{ flex: 1, padding: "20px" }}>
+      <main className="main-content">
         <Routes>
           <Route path="/ventas" element={<Ventas usuario={usuario} />} />
           <Route path="/finanzas" element={<Finanzas usuario={usuario} />} />
