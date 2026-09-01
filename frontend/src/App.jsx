@@ -60,7 +60,7 @@ function App() {
       <main style={{ flex: 1, padding: "20px" }}>
         <Routes>
           <Route path="/ventas" element={<Ventas usuario={usuario} />} />
-          <Route path="/finanzas" element={<Finanzas />} />
+          <Route path="/finanzas" element={<Finanzas usuario={usuario} />} />
           <Route path="/mercadeo" element={<Mercadeo />} />
           <Route path="/rrhh" element={<RRHH usuario={usuario} />} />
           <Route path="/auditoria" element={<Auditoria usuario={usuario} />} />

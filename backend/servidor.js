@@ -171,6 +171,41 @@ app.get(
   }
 );
 
+app.get(
+  "/finanzas/resumen",
+  requiereLogin,
+  requiereRol("administrador", "gerencia"),
+  async (req, res) => {
+    try {
+      const pool = await getConnection();
+
+      const total = await pool.request().query(`
+        SELECT SUM(o.Cantidad * p.PrecioUnitario) AS GastoTotal
+        FROM Ordenes o
+        JOIN Productos p ON p.Id = o.ProductoId
+      `);
+
+      const porProducto = await pool.request().query(`
+        SELECT p.Nombre AS Producto,
+               SUM(o.Cantidad) AS UnidadesOrdenadas,
+               SUM(o.Cantidad * p.PrecioUnitario) AS Gasto
+        FROM Ordenes o
+        JOIN Productos p ON p.Id = o.ProductoId
+        GROUP BY p.Nombre
+        ORDER BY Gasto DESC
+      `);
+
+      res.json({
+        gastoTotal: total.recordset[0].GastoTotal || 0,
+        porProducto: porProducto.recordset,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error al consultar finanzas" });
+    }
+  }
+);
+
 app.listen(3000, () => {
   console.log("Servidor corriendo en http://localhost:3000");
 });
