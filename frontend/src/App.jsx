@@ -16,6 +16,7 @@ import Auditoria from "./pages/Auditoria";
 import RRHH from "./pages/RRHH";
 import Finanzas from "./pages/Finanzas";
 import Mercadeo from "./pages/Mercadeo";
+import PerfilEmpleado from "./pages/PerfilEmpleado";
 
 const modulos = [
   { path: "/", nombre: "Inicio", icono: LayoutDashboard },
@@ -85,6 +86,7 @@ function App() {
           <Route path="/rrhh" element={<RRHH usuario={usuario} />} />
           <Route path="/auditoria" element={<Auditoria usuario={usuario} />} />
           <Route path="*" element={<Dashboard usuario={usuario} />} />
+          <Route path="/rrhh/:id" element={<PerfilEmpleado usuario={usuario} />} />
         </Routes>
       </main>
     </div>

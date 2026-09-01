@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 function RRHH({ usuario }) {
   const [usuarios, setUsuarios] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch("http://localhost:3000/usuarios", {
@@ -26,7 +28,11 @@ function RRHH({ usuario }) {
           </thead>
           <tbody>
             {usuarios.map((u) => (
-              <tr key={u.Id}>
+              <tr
+                key={u.Id}
+                onClick={() => navigate(`/rrhh/${u.Id}`)}
+                style={{ cursor: "pointer" }}
+              >
                 <td>{u.Nombre}</td>
                 <td>{u.Correo}</td>
                 <td>{u.Rol}</td>

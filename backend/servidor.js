@@ -330,6 +330,72 @@ app.get("/dashboard/resumen", requiereLogin, async (req, res) => {
   }
 });
 
+
+app.get("/usuarios/:id", requiereLogin, async (req, res) => {
+  const id = Number(req.params.id);
+
+  try {
+    const pool = await getConnection();
+
+    const usuarioResult = await pool
+      .request()
+      .input("id", sql.Int, id)
+      .query(
+        `SELECT Id, Nombre, Correo, Rol, Departamento, Telefono, FechaContratacion, Activo
+         FROM Usuarios WHERE Id = @id`
+      );
+
+    const usuarioEncontrado = usuarioResult.recordset[0];
+    if (!usuarioEncontrado) {
+      return res.status(404).json({ error: "Empleado no encontrado" });
+    }
+
+    const actividad = await pool
+      .request()
+      .input("id", sql.Int, id)
+      .query(
+        `SELECT TOP 10 Accion, Detalle, CreadoEn
+         FROM Auditoria WHERE UsuarioId = @id
+         ORDER BY Id DESC`
+      );
+
+    res.json({ ...usuarioEncontrado, actividad: actividad.recordset });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al consultar el empleado" });
+  }
+});
+
+app.post(
+  "/usuarios/:id/estado",
+  requiereLogin,
+  requiereRol("administrador"),
+  async (req, res) => {
+    const id = Number(req.params.id);
+    const { activo } = req.body;
+
+    try {
+      const pool = await getConnection();
+      await pool
+        .request()
+        .input("id", sql.Int, id)
+        .input("activo", sql.Bit, activo)
+        .query("UPDATE Usuarios SET Activo = @activo WHERE Id = @id");
+
+      await registrarAuditoria(
+        req.usuario.id,
+        "estado_empleado",
+        `${req.usuario.nombre} ${activo ? "activó" : "desactivó"} al empleado #${id}`
+      );
+
+      res.json({ ok: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error al actualizar el estado" });
+    }
+  }
+);
+
 app.listen(3000, () => {
   console.log("Servidor corriendo en http://localhost:3000");
 });
