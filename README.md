@@ -49,9 +49,6 @@ npm install
 npm run dev
 ```
 Corre en `http://localhost:3000` con recarga automática (`nodemon`). Necesita un `.env` con:
-```
-JWT_SECRET=una-clave-larga-y-dificil-de-adivinar
-```
 
 Crear el primer usuario administrador:
 ```bash
