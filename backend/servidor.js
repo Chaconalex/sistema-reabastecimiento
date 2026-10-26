@@ -11,6 +11,7 @@ const { registrarAuditoria } = require("./auditoria");
 app.use(cors());
 app.use(express.json());
 
+// ================= AUTENTICACIÓN =================
 app.post("/login", async (req, res) => {
   const { correo, contrasena } = req.body;
 
@@ -45,6 +46,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
+// ================= PRODUCTOS & VENTAS =================
 app.get("/productos", async (req, res) => {
   try {
     const pool = await getConnection();
@@ -66,7 +68,6 @@ app.post(
     try {
       const pool = await getConnection();
 
-      // 1. Traer el producto
       const productoResult = await pool
         .request()
         .input("id", sql.Int, id)
@@ -77,7 +78,6 @@ app.post(
         return res.status(404).json({ error: "Producto no encontrado" });
       }
 
-      // 2. Bajar el stock (nunca menos de 0)
       const nuevoStock = Math.max(0, producto.Stock - 3);
       await pool
         .request()
@@ -85,7 +85,6 @@ app.post(
         .input("stock", sql.Int, nuevoStock)
         .query("UPDATE Productos SET Stock = @stock WHERE Id = @id");
 
-      // 3. Revisar si toca generar una orden
       let ordenGenerada = null;
       if (nuevoStock <= producto.PuntoReorden) {
         const ordenAbierta = await pool
@@ -114,14 +113,15 @@ app.post(
           .input("cantidad", sql.Int, 3)
           .query(
             `INSERT INTO VentasRegistro (ProductoId, UsuarioId, Cantidad)
-            VALUES (@productoId, @usuarioId, @cantidad)`
+             VALUES (@productoId, @usuarioId, @cantidad)`
           );
       }
-await registrarAuditoria(
-  req.usuario.id,
-  "venta",
-  `${req.usuario.nombre} vendió unidades de ${producto.Nombre} (stock resultante: ${nuevoStock})`
-);
+
+      await registrarAuditoria(
+        req.usuario.id,
+        "venta",
+        `${req.usuario.nombre} vendió unidades de ${producto.Nombre} (stock resultante: ${nuevoStock})`
+      );
       res.json({ stock: nuevoStock, ordenGenerada });
     } catch (err) {
       console.error(err);
@@ -130,6 +130,7 @@ await registrarAuditoria(
   }
 );
 
+// ================= ÓRDENES =================
 app.get("/ordenes", async (req, res) => {
   try {
     const pool = await getConnection();
@@ -145,120 +146,6 @@ app.get("/ordenes", async (req, res) => {
     res.status(500).json({ error: "Error al consultar órdenes" });
   }
 });
-
-app.get("/usuarios", requiereLogin, async (req, res) => {
-  try {
-    const pool = await getConnection();
-    const resultado = await pool
-      .request()
-      .query("SELECT Id, Nombre, Correo, Rol, Departamento FROM Usuarios");
-    res.json(resultado.recordset);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error al consultar usuarios" });
-  }
-});
-
-app.get(
-  "/auditoria",
-  requiereLogin,
-  requiereRol("administrador", "gerencia"),
-  async (req, res) => {
-    try {
-      const pool = await getConnection();
-      const resultado = await pool.request().query(`
-        SELECT a.Id, a.Accion, a.Detalle, a.CreadoEn, u.Nombre AS Usuario
-        FROM Auditoria a
-        JOIN Usuarios u ON u.Id = a.UsuarioId
-        ORDER BY a.Id DESC
-      `);
-      res.json(resultado.recordset);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Error al consultar auditoría" });
-    }
-  }
-);
-
-app.get(
-  "/finanzas/resumen",
-  requiereLogin,
-  requiereRol("administrador", "gerencia"),
-  async (req, res) => {
-    try {
-      const pool = await getConnection();
-
-      const total = await pool.request().query(`
-        SELECT SUM(o.Cantidad * p.PrecioUnitario) AS GastoTotal
-        FROM Ordenes o
-        JOIN Productos p ON p.Id = o.ProductoId
-      `);
-
-      const porProducto = await pool.request().query(`
-        SELECT p.Nombre AS Producto,
-               SUM(o.Cantidad) AS UnidadesOrdenadas,
-               SUM(o.Cantidad * p.PrecioUnitario) AS Gasto
-        FROM Ordenes o
-        JOIN Productos p ON p.Id = o.ProductoId
-        GROUP BY p.Nombre
-        ORDER BY Gasto DESC
-      `);
-      const porMes = await pool.request().query(`
-    SELECT FORMAT(o.CreadoEn, 'yyyy-MM') AS Mes,
-          SUM(o.Cantidad * p.PrecioUnitario) AS Gasto
-    FROM Ordenes o
-    JOIN Productos p ON p.Id = o.ProductoId
-    GROUP BY FORMAT(o.CreadoEn, 'yyyy-MM')
-    ORDER BY Mes
-`);
-
-      res.json({
-        gastoTotal: total.recordset[0].GastoTotal || 0,
-        porProducto: porProducto.recordset,
-             porMes: porMes.recordset,
-      });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Error al consultar finanzas" });
-    }
-  }
-);
-
-app.post(
-  "/productos/:id/promocion",
-  requiereLogin,
-  requiereRol("administrador", "gerencia"),
-  async (req, res) => {
-    const id = Number(req.params.id);
-    const { activar, porcentaje } = req.body;
-
-    try {
-      const pool = await getConnection();
-      await pool
-        .request()
-        .input("id", sql.Int, id)
-        .input("activar", sql.Bit, activar)
-        .input("porcentaje", sql.Int, activar ? porcentaje : null)
-        .query(
-          `UPDATE Productos
-           SET EnPromocion = @activar, PorcentajeDescuento = @porcentaje
-           WHERE Id = @id`
-        );
-
-      await registrarAuditoria(
-        req.usuario.id,
-        "promocion",
-        `${req.usuario.nombre} ${activar ? "activó" : "desactivó"} promoción en producto ${id}`
-      );
-
-      res.json({ ok: true });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Error al actualizar promoción" });
-    }
-  }
-);
-
 
 app.post(
   "/ordenes/:id/recibir",
@@ -310,54 +197,23 @@ app.post(
   }
 );
 
+// ================= GESTIÓN DE USUARIOS Y RRHH =================
 
-app.get("/dashboard/resumen", requiereLogin, async (req, res) => {
+// Listar colaboradores (AHORA SÍ INCLUYE Activo y Telefono)
+app.get("/usuarios", requiereLogin, async (req, res) => {
   try {
     const pool = await getConnection();
-
-    const productos = await pool
+    const resultado = await pool
       .request()
-      .query("SELECT COUNT(*) AS Total FROM Productos WHERE Stock <= PuntoReorden");
-
-    const ordenesPendientes = await pool
-      .request()
-      .query("SELECT COUNT(*) AS Total FROM Ordenes WHERE Estado != 'recibida'");
-
-    const gasto = await pool.request().query(`
-      SELECT SUM(o.Cantidad * p.PrecioUnitario) AS GastoTotal
-      FROM Ordenes o
-      JOIN Productos p ON p.Id = o.ProductoId
-    `);
-
-    const empleados = await pool.request().query("SELECT COUNT(*) AS Total FROM Usuarios");
-
-    const promociones = await pool
-      .request()
-      .query("SELECT COUNT(*) AS Total FROM Productos WHERE EnPromocion = 1");
-
-
-  const actividadReciente = await pool.request().query(`
-  SELECT TOP 5 a.Accion, a.Detalle, a.CreadoEn, u.Nombre AS Usuario
-  FROM Auditoria a
-  JOIN Usuarios u ON u.Id = a.UsuarioId
-  ORDER BY a.Id DESC
-`);
-
-    res.json({
-      productosBajoStock: productos.recordset[0].Total,
-      ordenesPendientes: ordenesPendientes.recordset[0].Total,
-      gastoTotal: gasto.recordset[0].GastoTotal || 0,
-      totalEmpleados: empleados.recordset[0].Total,
-      promocionesActivas: promociones.recordset[0].Total,
-      actividadReciente: actividadReciente.recordset,
-    });
+      .query("SELECT Id, Nombre, Correo, Rol, Departamento, Telefono, FechaContratacion, Activo FROM Usuarios ORDER BY Id ASC");
+    res.json(resultado.recordset);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Error al consultar el dashboard" });
+    res.status(500).json({ error: "Error al consultar usuarios" });
   }
 });
 
-
+// Detalle de un empleado con bitácora
 app.get("/usuarios/:id", requiereLogin, async (req, res) => {
   const id = Number(req.params.id);
 
@@ -393,6 +249,118 @@ app.get("/usuarios/:id", requiereLogin, async (req, res) => {
   }
 });
 
+// CREAR NUEVO USUARIO
+app.post(
+  "/usuarios",
+  requiereLogin,
+  requiereRol("administrador"),
+  async (req, res) => {
+    const { nombre, correo, contrasena, rol, departamento, telefono } = req.body;
+
+    if (!nombre || !correo || !contrasena || !rol) {
+      return res.status(400).json({ error: "Faltan datos obligatorios (nombre, correo, contraseña o rol)" });
+    }
+
+    try {
+      const pool = await getConnection();
+
+      // Verificar si ya existe el correo
+      const existente = await pool
+        .request()
+        .input("correo", sql.NVarChar, correo)
+        .query("SELECT Id FROM Usuarios WHERE Correo = @correo");
+
+      if (existente.recordset.length > 0) {
+        return res.status(400).json({ error: "El correo ya se encuentra registrado en el sistema." });
+      }
+
+      const contrasenaHash = await bcrypt.hash(contrasena, 10);
+      const fechaContratacion = new Date().toISOString().slice(0, 10);
+
+      const nuevo = await pool
+        .request()
+        .input("Nombre", sql.NVarChar, nombre)
+        .input("Correo", sql.NVarChar, correo)
+        .input("ContrasenaHash", sql.NVarChar, contrasenaHash)
+        .input("Rol", sql.NVarChar, rol)
+        .input("Departamento", sql.NVarChar, departamento || "General")
+        .input("Telefono", sql.NVarChar, telefono || null)
+        .input("FechaContratacion", sql.Date, fechaContratacion)
+        .input("Activo", sql.Bit, 1)
+        .query(`
+          INSERT INTO Usuarios (Nombre, Correo, ContrasenaHash, Rol, Departamento, Telefono, FechaContratacion, Activo)
+          OUTPUT INSERTED.Id, INSERTED.Nombre, INSERTED.Correo, INSERTED.Rol, INSERTED.Departamento, INSERTED.Telefono, INSERTED.Activo
+          VALUES (@Nombre, @Correo, @ContrasenaHash, @Rol, @Departamento, @Telefono, @FechaContratacion, @Activo)
+        `);
+
+      await registrarAuditoria(
+        req.usuario.id,
+        "crear_usuario",
+        `${req.usuario.nombre} registró al colaborador: ${nombre} (${correo}) con rol ${rol}`
+      );
+
+      res.status(201).json(nuevo.recordset[0]);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error al registrar nuevo usuario" });
+    }
+  }
+);
+
+// EDITAR USUARIO EXISTENTE
+app.put(
+  "/usuarios/:id",
+  requiereLogin,
+  requiereRol("administrador"),
+  async (req, res) => {
+    const id = Number(req.params.id);
+    const { nombre, correo, contrasena, rol, departamento, telefono } = req.body;
+
+    try {
+      const pool = await getConnection();
+
+      // Si envía nueva contraseña se hashea, si no se mantiene la actual
+      let queryUpdate = `
+        UPDATE Usuarios 
+        SET Nombre = @Nombre,
+            Correo = @Correo,
+            Rol = @Rol,
+            Departamento = @Departamento,
+            Telefono = @Telefono
+      `;
+
+      const request = pool.request()
+        .input("Id", sql.Int, id)
+        .input("Nombre", sql.NVarChar, nombre)
+        .input("Correo", sql.NVarChar, correo)
+        .input("Rol", sql.NVarChar, rol)
+        .input("Departamento", sql.NVarChar, departamento)
+        .input("Telefono", sql.NVarChar, telefono || null);
+
+      if (contrasena && contrasena.trim() !== "") {
+        const hash = await bcrypt.hash(contrasena, 10);
+        request.input("ContrasenaHash", sql.NVarChar, hash);
+        queryUpdate += `, ContrasenaHash = @ContrasenaHash `;
+      }
+
+      queryUpdate += ` WHERE Id = @Id`;
+      await request.query(queryUpdate);
+
+      await registrarAuditoria(
+        req.usuario.id,
+        "editar_usuario",
+        `${req.usuario.nombre} actualizó los datos del colaborador #${id} (${nombre})`
+      );
+
+      res.json({ ok: true, mensaje: "Colaborador actualizado con éxito" });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error al actualizar información del usuario" });
+    }
+  }
+);
+
+// Activar o desactivar empleado
 app.post(
   "/usuarios/:id/estado",
   requiereLogin,
@@ -422,6 +390,153 @@ app.post(
     }
   }
 );
+
+// ================= AUDITORÍA & REPORTES =================
+app.get(
+  "/auditoria",
+  requiereLogin,
+  requiereRol("administrador", "gerencia"),
+  async (req, res) => {
+    try {
+      const pool = await getConnection();
+      const resultado = await pool.request().query(`
+        SELECT a.Id, a.Accion, a.Detalle, a.CreadoEn, u.Nombre AS Usuario
+        FROM Auditoria a
+        JOIN Usuarios u ON u.Id = a.UsuarioId
+        ORDER BY a.Id DESC
+      `);
+      res.json(resultado.recordset);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error al consultar auditoría" });
+    }
+  }
+);
+
+app.get(
+  "/finanzas/resumen",
+  requiereLogin,
+  requiereRol("administrador", "gerencia"),
+  async (req, res) => {
+    try {
+      const pool = await getConnection();
+
+      const total = await pool.request().query(`
+        SELECT SUM(o.Cantidad * p.PrecioUnitario) AS GastoTotal
+        FROM Ordenes o
+        JOIN Productos p ON p.Id = o.ProductoId
+      `);
+
+      const porProducto = await pool.request().query(`
+        SELECT p.Nombre AS Producto,
+               SUM(o.Cantidad) AS UnidadesOrdenadas,
+               SUM(o.Cantidad * p.PrecioUnitario) AS Gasto
+        FROM Ordenes o
+        JOIN Productos p ON p.Id = o.ProductoId
+        GROUP BY p.Nombre
+        ORDER BY Gasto DESC
+      `);
+
+      const porMes = await pool.request().query(`
+        SELECT FORMAT(o.CreadoEn, 'yyyy-MM') AS Mes,
+               SUM(o.Cantidad * p.PrecioUnitario) AS Gasto
+        FROM Ordenes o
+        JOIN Productos p ON p.Id = o.ProductoId
+        GROUP BY FORMAT(o.CreadoEn, 'yyyy-MM')
+        ORDER BY Mes
+      `);
+
+      res.json({
+        gastoTotal: total.recordset[0].GastoTotal || 0,
+        porProducto: porProducto.recordset,
+        porMes: porMes.recordset,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error al consultar finanzas" });
+    }
+  }
+);
+
+app.post(
+  "/productos/:id/promocion",
+  requiereLogin,
+  requiereRol("administrador", "gerencia"),
+  async (req, res) => {
+    const id = Number(req.params.id);
+    const { activar, porcentaje } = req.body;
+
+    try {
+      const pool = await getConnection();
+      await pool
+        .request()
+        .input("id", sql.Int, id)
+        .input("activar", sql.Bit, activar)
+        .input("porcentaje", sql.Int, activar ? porcentaje : null)
+        .query(
+          `UPDATE Productos
+           SET EnPromocion = @activar, PorcentajeDescuento = @porcentaje
+           WHERE Id = @id`
+        );
+
+      await registrarAuditoria(
+        req.usuario.id,
+        "promocion",
+        `${req.usuario.nombre} ${activar ? "activó" : "desactivó"} promoción en producto ${id}`
+      );
+
+      res.json({ ok: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error al actualizar promoción" });
+    }
+  }
+);
+
+app.get("/dashboard/resumen", requiereLogin, async (req, res) => {
+  try {
+    const pool = await getConnection();
+
+    const productos = await pool
+      .request()
+      .query("SELECT COUNT(*) AS Total FROM Productos WHERE Stock <= PuntoReorden");
+
+    const ordenesPendientes = await pool
+      .request()
+      .query("SELECT COUNT(*) AS Total FROM Ordenes WHERE Estado != 'recibida'");
+
+    const gasto = await pool.request().query(`
+      SELECT SUM(o.Cantidad * p.PrecioUnitario) AS GastoTotal
+      FROM Ordenes o
+      JOIN Productos p ON p.Id = o.ProductoId
+    `);
+
+    const empleados = await pool.request().query("SELECT COUNT(*) AS Total FROM Usuarios");
+
+    const promociones = await pool
+      .request()
+      .query("SELECT COUNT(*) AS Total FROM Productos WHERE EnPromocion = 1");
+
+    const actividadReciente = await pool.request().query(`
+      SELECT TOP 5 a.Accion, a.Detalle, a.CreadoEn, u.Nombre AS Usuario
+      FROM Auditoria a
+      JOIN Usuarios u ON u.Id = a.UsuarioId
+      ORDER BY a.Id DESC
+    `);
+
+    res.json({
+      productosBajoStock: productos.recordset[0].Total,
+      ordenesPendientes: ordenesPendientes.recordset[0].Total,
+      gastoTotal: gasto.recordset[0].GastoTotal || 0,
+      totalEmpleados: empleados.recordset[0].Total,
+      promocionesActivas: promociones.recordset[0].Total,
+      actividadReciente: actividadReciente.recordset,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al consultar el dashboard" });
+  }
+});
 
 app.get("/ventas/historial", requiereLogin, async (req, res) => {
   try {
@@ -456,8 +571,6 @@ app.get("/ventas/resumen", requiereLogin, async (req, res) => {
     res.status(500).json({ error: "Error al consultar el resumen de ventas" });
   }
 });
-
-
 
 app.listen(3000, () => {
   console.log("Servidor corriendo en http://localhost:3000");
